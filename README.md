@@ -35,10 +35,7 @@ function getDistance(lat1, lng1, lat2, lng2) {
   return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lng1 - lng2, 2));
 }
 
-```markdown
-이 계산 방식은 데이터 전처리 없이 빠른 결과를 얻는 데 유리하여  
-MVP 단계의 추천 시스템 구현에 적합합니다.
-
+```
 ---
 
 ## 개발 목적
