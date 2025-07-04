@@ -1,0 +1,37 @@
+[
+  {
+    "name": "전주비빔밥",
+    "lat": 35.815,
+    "lng": 127.15,
+    "category": "한식",
+    "description": "전주 명물 비빔밥 전문점"
+  },
+  {
+    "name": "중화루",
+    "lat": 35.812,
+    "lng": 127.14,
+    "category": "중식",
+    "description": "깔끔한 중국요리 전문"
+  },
+  {
+    "name": "일식당",
+    "lat": 35.813,
+    "lng": 127.145,
+    "category": "일식",
+    "description": "신선한 스시 제공"
+  },
+  {
+    "name": "�׽�Ʈ �Ĵ�",
+    "lat": 35.81,
+    "lng": 127.14,
+    "category": "�ѽ�",
+    "description": "�׽�Ʈ�� ���"
+  },
+  {
+    "name": "백종원 국밥",
+    "lat": 35.81,
+    "lng": 127.14,
+    "category": "한식",
+    "description": "전주 대표 국밥"
+  }
+]

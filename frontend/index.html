@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="utf-8">
   <title>EdgeCacheMap</title>
   <script type="text/javascript"
     src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=8dc498e5a0513820fb29762cc5b64689&autoload=false" defer>
-  </script>
+    </script>
   <style>
     #map {
       width: 100%;
@@ -28,18 +29,13 @@
       background-color: #007bff;
       color: white;
     }
-
-    #info-box {
-      margin-top: 12px;
-      padding: 10px;
-      border-top: 1px solid #ccc;
-      background-color: #f9f9f9;
-    }
   </style>
 </head>
+
 <body>
   <h2>📍 지도 기반 맛집 추천 시스템</h2>
 
+  <!-- 카테고리 필터 -->
   <div class="buttons">
     <button data-category="전체" class="active">전체</button>
     <button data-category="한식">한식</button>
@@ -49,119 +45,112 @@
     <button data-category="카페">카페</button>
   </div>
 
+  <!-- 📌 음식점 등록 폼 -->
+  <form id="placeForm" style="margin-bottom: 20px;">
+    <h3>음식점 등록</h3>
+    <input type="text" id="name" placeholder="이름" required />
+    <input type="number" id="lat" placeholder="위도" required step="any" />
+    <input type="number" id="lng" placeholder="경도" required step="any" />
+    <input type="text" id="category" placeholder="카테고리" required />
+    <input type="text" id="description" placeholder="설명" required />
+    <button type="submit">등록</button>
+  </form>
+
+
   <div id="map"></div>
 
-  <div id="info-box">
-    🍽️ 음식점을 클릭하면 상세 정보가 여기에 표시됩니다.
-  </div>
-
-  <script src="markerData.js"></script>
   <script>
-    // 거리 계산 함수
     function getDistance(lat1, lng1, lat2, lng2) {
       return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lng1 - lng2, 2));
     }
 
     window.onload = function () {
       kakao.maps.load(function () {
-        const mapContainer = document.getElementById('map');
-        const mapOption = {
-          center: new kakao.maps.LatLng(35.814, 127.148), // 전주 기준
+        var mapContainer = document.getElementById('map');
+        var mapOption = {
+          center: new kakao.maps.LatLng(37.5665, 126.9780),
           level: 5
         };
-        const map = new kakao.maps.Map(mapContainer, mapOption);
-        const infoBox = document.getElementById("info-box");
+        var map = new kakao.maps.Map(mapContainer, mapOption);
+
         let allMarkers = [];
 
-        // 사용자의 현재 위치 가져오기
-        navigator.geolocation.getCurrentPosition(function (position) {
-          const userLat = position.coords.latitude;
-          const userLng = position.coords.longitude;
-          const userLocation = new kakao.maps.LatLng(userLat, userLng);
-          map.setCenter(userLocation);
+        fetch("http://localhost:3000/places")
+          .then(res => res.json())
+          .then(markerData => {
+            // 마커 생성
+            markerData.forEach(function (place) {
+              const marker = new kakao.maps.Marker({
+                position: new kakao.maps.LatLng(place.lat, place.lng),
+                map: map,
+                title: place.name
+              });
 
-          const userMarker = new kakao.maps.Marker({
-            position: userLocation,
-            map: map,
-            title: "📍 내 위치"
-          });
+              const infoWindow = new kakao.maps.InfoWindow({
+                content: `<div style="padding:5px;">${place.name}</div>`
+              });
 
-          // ⭐ 추천 마커 아이콘 설정
-          const recommendIcon = new kakao.maps.MarkerImage(
-            "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
-            new kakao.maps.Size(24, 35)
-          );
+              kakao.maps.event.addListener(marker, 'mouseover', function () {
+                infoWindow.open(map, marker);
+              });
+              kakao.maps.event.addListener(marker, 'mouseout', function () {
+                infoWindow.close();
+              });
 
-          // 거리 계산하여 가장 가까운 3곳 추천
-          const distances = markerData.map(place => {
-            const dist = getDistance(userLat, userLng, place.lat, place.lng);
-            return { ...place, dist };
-          });
-
-          const top3 = distances.sort((a, b) => a.dist - b.dist).slice(0, 3);
-
-          top3.forEach(place => {
-            const pos = new kakao.maps.LatLng(place.lat, place.lng);
-            const marker = new kakao.maps.Marker({
-              position: pos,
-              map: map,
-              title: `⭐ 추천: ${place.name}`,
-              image: recommendIcon
+              allMarkers.push({
+                marker: marker,
+                category: place.category
+              });
             });
 
-            const infoWindow = new kakao.maps.InfoWindow({
-              content: `<div style="padding:5px;">⭐ ${place.name}</div>`
+            // 위치 기반 추천 마커 표시
+            navigator.geolocation.getCurrentPosition(function (position) {
+              const userLat = position.coords.latitude;
+              const userLng = position.coords.longitude;
+              const userLocation = new kakao.maps.LatLng(userLat, userLng);
+              map.setCenter(userLocation);
+
+              const userMarker = new kakao.maps.Marker({
+                position: userLocation,
+                map: map,
+                title: "📍 내 위치"
+              });
+
+              const recommendIcon = new kakao.maps.MarkerImage(
+                "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
+                new kakao.maps.Size(24, 35)
+              );
+
+              const distances = markerData.map(place => {
+                const dist = getDistance(userLat, userLng, place.lat, place.lng);
+                return { ...place, dist };
+              });
+
+              const top3 = distances.sort((a, b) => a.dist - b.dist).slice(0, 3);
+              top3.forEach(place => {
+                const pos = new kakao.maps.LatLng(place.lat, place.lng);
+                const marker = new kakao.maps.Marker({
+                  position: pos,
+                  map: map,
+                  title: `⭐ 추천: ${place.name}`,
+                  image: recommendIcon
+                });
+
+                const infoWindow = new kakao.maps.InfoWindow({
+                  content: `<div style="padding:5px;">⭐ ${place.name}</div>`
+                });
+
+                kakao.maps.event.addListener(marker, 'mouseover', function () {
+                  infoWindow.open(map, marker);
+                });
+                kakao.maps.event.addListener(marker, 'mouseout', function () {
+                  infoWindow.close();
+                });
+              });
             });
-
-            kakao.maps.event.addListener(marker, 'mouseover', function () {
-              infoWindow.open(map, marker);
-            });
-            kakao.maps.event.addListener(marker, 'mouseout', function () {
-              infoWindow.close();
-            });
-
-            kakao.maps.event.addListener(marker, 'click', function () {
-              infoBox.innerHTML = `
-                <h3>${place.name} ⭐ ${place.rating}</h3>
-                <p>${place.description}</p>
-              `;
-            });
-          });
-        });
-
-        // 기본 음식점 마커 렌더링
-        markerData.forEach(function (place) {
-          const marker = new kakao.maps.Marker({
-            position: new kakao.maps.LatLng(place.lat, place.lng),
-            map: map,
-            title: place.name
           });
 
-          const infoWindow = new kakao.maps.InfoWindow({
-            content: `<div style="padding:5px;">${place.name}</div>`
-          });
-
-          kakao.maps.event.addListener(marker, 'mouseover', function () {
-            infoWindow.open(map, marker);
-          });
-          kakao.maps.event.addListener(marker, 'mouseout', function () {
-            infoWindow.close();
-          });
-
-          kakao.maps.event.addListener(marker, 'click', function () {
-            infoBox.innerHTML = `
-              <h3>${place.name} ⭐ ${place.rating}</h3>
-              <p>${place.description}</p>
-            `;
-          });
-
-          allMarkers.push({
-            marker: marker,
-            category: place.category
-          });
-        });
-
-        // 버튼 필터
+        // 필터 버튼 클릭 시 마커 필터링
         const buttons = document.querySelectorAll(".buttons button");
         buttons.forEach(function (btn) {
           btn.addEventListener("click", function () {
@@ -177,12 +166,35 @@
                 obj.marker.setMap(null);
               }
             });
-
-            infoBox.innerHTML = "🍽️ 음식점을 클릭하면 상세 정보가 여기에 표시됩니다.";
           });
         });
+      });
+      // ✅ 음식점 등록 처리
+      document.getElementById("placeForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        const newPlace = {
+          name: document.getElementById("name").value,
+          lat: parseFloat(document.getElementById("lat").value),
+          lng: parseFloat(document.getElementById("lng").value),
+          category: document.getElementById("category").value,
+          description: document.getElementById("description").value,
+        };
+
+        fetch("http://localhost:3000/places", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newPlace)
+        })
+          .then(res => {
+            if (!res.ok) throw new Error("등록 실패");
+            alert("등록 완료!");
+            location.reload(); // 페이지 새로고침으로 마커 반영
+          })
+          .catch(err => alert("오류 발생: " + err.message));
       });
     };
   </script>
 </body>
+
 </html>
