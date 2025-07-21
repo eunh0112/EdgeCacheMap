@@ -5,8 +5,8 @@
   <meta charset="utf-8">
   <title>EdgeCacheMap</title>
   <script type="text/javascript"
-    src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=8dc498e5a0513820fb29762cc5b64689&autoload=false" defer>
-    </script>
+    src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=8dc498e5a0513820fb29762cc5b64689&autoload=false&libraries=services"
+    defer></script>
   <style>
     #map {
       width: 100%;
@@ -29,105 +29,284 @@
       background-color: #007bff;
       color: white;
     }
+
+    #info {
+      margin-top: 10px;
+      font-size: 14px;
+    }
   </style>
 </head>
 
 <body>
-  <h2>📍 지도 기반 맛집 추천 시스템</h2>
-
-  <!-- 카테고리 필터 -->
-  <div class="buttons">
-    <button data-category="전체" class="active">전체</button>
-    <button data-category="한식">한식</button>
-    <button data-category="중식">중식</button>
-    <button data-category="일식">일식</button>
-    <button data-category="분식">분식</button>
-    <button data-category="카페">카페</button>
+  <div id="mainApp" style="display: none;">
+    <h2>📍 나만의 음식 도감</h2>
+    <div class="buttons">
+      <button data-category="전체" class="active">전체</button>
+      <button data-category="한식">한식</button>
+      <button data-category="중식">중식</button>
+      <button data-category="양식">양식</button>
+      <button data-category="일식">일식</button>
+      <button data-category="분식">분식</button>
+      <button data-category="카페">카페</button>
+    </div>
+    <h3>🍴 음식점 등록</h3>
+    <div>
+      <input id="name" placeholder="음식점 이름">
+      <input id="lat" placeholder="위도">
+      <input id="lng" placeholder="경도">
+      <input id="category" placeholder="카테고리 (한식/중식 등)">
+      <input id="description" placeholder="설명">
+      <button onclick="registerPlace()">등록</button>
+    </div>
+    <button onclick="logout()">로그아웃</button>
+    <div id="map"></div>
+    <div id="info">음식점을 클릭하면 상세정보가 여기에 표시됩니다.</div>
   </div>
 
-  <!-- 📌 음식점 등록 폼 -->
-  <form id="placeForm" style="margin-bottom: 20px;">
-    <h3>음식점 등록</h3>
-    <input type="text" id="name" placeholder="이름" required />
-    <input type="number" id="lat" placeholder="위도" required step="any" />
-    <input type="number" id="lng" placeholder="경도" required step="any" />
-    <input type="text" id="category" placeholder="카테고리" required />
-    <input type="text" id="description" placeholder="설명" required />
-    <button type="submit">등록</button>
-  </form>
+  <div id="authSection">
+    <h2>🔐 로그인 / 회원가입</h2>
+    <input id="username" placeholder="아이디">
+    <input id="password" placeholder="비밀번호" type="password">
+    <button onclick="login()">로그인</button>
+    <button onclick="register()">회원가입</button>
+  </div>
+  <!-- 마커 우클릭 시 뜨는 메뉴 -->
+  <div id="contextMenu" style="
+  display: none;
+  position: absolute;
+  background-color: white;
+  border: 1px solid #ccc;
+  padding: 5px;
+  z-index: 1000;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  ">
+    <div id="editPlaceBtn" style="cursor:pointer;">✏ 수정</div>
+    <div id="deletePlaceBtn" style="cursor:pointer;">🗑 삭제</div>
+  </div>
 
-
-  <div id="map"></div>
 
   <script>
+    let selectedPlaceForAction = null;
+    let selectedPlaceId = null;
+    let tempClickMarker = null;
+
+
+
     function getDistance(lat1, lng1, lat2, lng2) {
       return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lng1 - lng2, 2));
     }
 
+    function registerPlace() {
+      const token = localStorage.getItem("token"); // 로그인 후 저장된 토큰
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+
+      const name = document.getElementById("name").value;
+      const lat = parseFloat(document.getElementById("lat").value);
+      const lng = parseFloat(document.getElementById("lng").value);
+      const category = document.getElementById("category").value;
+      const description = document.getElementById("description").value;
+
+      fetch("http://localhost:3000/places", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ name, lat, lng, category, description })
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log("등록 결과:", data);
+          alert("음식점 등록 완료!");
+        })
+        .catch(err => {
+          console.error("등록 오류:", err);
+          alert("등록 실패!");
+        });
+    }
+
+    function login() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      fetch("http://localhost:3000/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ username, password })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.token) {
+            localStorage.setItem("token", data.token);  // ✅ 토큰 저장
+            alert("로그인 성공!");
+            document.getElementById("authSection").style.display = "none";
+            document.getElementById("mainApp").style.display = "block"; // ✅ 지도 UI 보이기
+          } else {
+            alert("로그인 실패: " + data.message);
+          }
+        })
+        .catch(err => {
+          console.error("로그인 오류:", err);
+          alert("로그인 중 오류 발생");
+        });
+    }
+    function logout() {
+      localStorage.removeItem("token");
+      alert("로그아웃 되었습니다.");
+      document.getElementById("mainApp").style.display = "none";
+      document.getElementById("authSection").style.display = "block";
+    }
+
+
+    function register() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      fetch("http://localhost:3000/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ username, password })
+      })
+        .then(res => res.json())
+        .then(data => {
+          alert(data.message);
+        })
+        .catch(err => {
+          console.error("회원가입 오류:", err);
+          alert("회원가입 중 오류 발생");
+        });
+    }
+
+    function updatePlace() {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+      if (!selectedPlaceId) {
+        alert("수정할 음식점을 먼저 선택하세요.");
+        return;
+      }
+
+      const name = document.getElementById("name").value;
+      const lat = parseFloat(document.getElementById("lat").value);
+      const lng = parseFloat(document.getElementById("lng").value);
+      const category = document.getElementById("category").value;
+      const description = document.getElementById("description").value;
+
+      fetch(`http://localhost:3000/places/${selectedPlaceId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ name, lat, lng, category, description })
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log("수정 결과:", data);
+          alert("음식점 수정 완료!");
+          location.reload(); // 새로고침해서 반영 확인
+        })
+        .catch(err => {
+          console.error("수정 오류:", err);
+          alert("수정 실패!");
+        });
+    }
+
+    function hideContextMenu() {
+      document.getElementById("contextMenu").style.display = "none";
+    }
+
+
+
     window.onload = function () {
-      kakao.maps.load(function () {
-        var mapContainer = document.getElementById('map');
-        var mapOption = {
+      const token = localStorage.getItem("token");
+
+      if (token) {
+        // 자동 로그인 상태 유지
+        document.getElementById("authSection").style.display = "none";
+        document.getElementById("mainApp").style.display = "block";
+
+        initMap(); // 지도 초기화 함수 호출
+      } else {
+        // 로그인 안된 상태면 로그인 UI만 표시
+        document.getElementById("authSection").style.display = "block";
+      }
+    };
+
+    async function initMap() {
+      kakao.maps.load(async function () {
+        const ps = new kakao.maps.services.Places();
+        const mapContainer = document.getElementById('map');
+        const mapOption = {
           center: new kakao.maps.LatLng(37.5665, 126.9780),
           level: 5
         };
-        var map = new kakao.maps.Map(mapContainer, mapOption);
+        const map = new kakao.maps.Map(mapContainer, mapOption);
+
+        const recommendIcon = new kakao.maps.MarkerImage(
+          "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
+          new kakao.maps.Size(24, 35)
+        );
 
         let allMarkers = [];
+        let recommendedMarkers = [];
 
-        fetch("http://localhost:3000/places")
-          .then(res => res.json())
-          .then(markerData => {
-            // 마커 생성
-            markerData.forEach(function (place) {
-              const marker = new kakao.maps.Marker({
-                position: new kakao.maps.LatLng(place.lat, place.lng),
-                map: map,
-                title: place.name
-              });
+        //DB에서 음식점 데이터 불러오기
+        const token = localStorage.getItem("token");
+        const res = await fetch("http://localhost:3000/places/my-places", {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        const markerData = await res.json();
 
-              const infoWindow = new kakao.maps.InfoWindow({
-                content: `<div style="padding:5px;">${place.name}</div>`
-              });
 
-              kakao.maps.event.addListener(marker, 'mouseover', function () {
-                infoWindow.open(map, marker);
-              });
-              kakao.maps.event.addListener(marker, 'mouseout', function () {
-                infoWindow.close();
-              });
+        navigator.geolocation.getCurrentPosition(function (position) {
+          const userLat = position.coords.latitude;
+          const userLng = position.coords.longitude;
+          const userLocation = new kakao.maps.LatLng(userLat, userLng);
 
-              allMarkers.push({
-                marker: marker,
-                category: place.category
-              });
-            });
+          map.setCenter(userLocation);
 
-            // 위치 기반 추천 마커 표시
-            navigator.geolocation.getCurrentPosition(function (position) {
-              const userLat = position.coords.latitude;
-              const userLng = position.coords.longitude;
-              const userLocation = new kakao.maps.LatLng(userLat, userLng);
-              map.setCenter(userLocation);
+          new kakao.maps.Marker({
+            position: userLocation,
+            map: map,
+            title: "📍 내 위치"
+          });
 
-              const userMarker = new kakao.maps.Marker({
-                position: userLocation,
-                map: map,
-                title: "📍 내 위치"
-              });
+          // 추천 마커 계산 함수
+          async function updateRecommendedMarkers(category, userLat, userLng) {
+            recommendedMarkers.forEach(marker => marker.setMap(null));
+            recommendedMarkers = [];
 
-              const recommendIcon = new kakao.maps.MarkerImage(
-                "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
-                new kakao.maps.Size(24, 35)
+            try {
+              const token = localStorage.getItem("token");
+
+              const res = await fetch(
+                `http://localhost:3000/places/recommend?lat=${userLat}&lng=${userLng}&category=${category}`,
+                {
+                  headers: {
+                    "Authorization": `Bearer ${token}`
+                  }
+                }
               );
 
-              const distances = markerData.map(place => {
-                const dist = getDistance(userLat, userLng, place.lat, place.lng);
-                return { ...place, dist };
-              });
+              const recommendedPlaces = await res.json();
 
-              const top3 = distances.sort((a, b) => a.dist - b.dist).slice(0, 3);
-              top3.forEach(place => {
+              if (!Array.isArray(recommendedPlaces)) {
+                throw new Error("응답이 배열 형태가 아닙니다.");
+              }
+
+              recommendedPlaces.forEach(place => {
                 const pos = new kakao.maps.LatLng(place.lat, place.lng);
                 const marker = new kakao.maps.Marker({
                   position: pos,
@@ -140,61 +319,293 @@
                   content: `<div style="padding:5px;">⭐ ${place.name}</div>`
                 });
 
-                kakao.maps.event.addListener(marker, 'mouseover', function () {
-                  infoWindow.open(map, marker);
+                kakao.maps.event.addListener(marker, 'mouseover', () => infoWindow.open(map, marker));
+                kakao.maps.event.addListener(marker, 'mouseout', () => infoWindow.close());
+
+                kakao.maps.event.addListener(marker, 'click', () => {
+                  document.getElementById("info").innerHTML = `
+          <strong>${place.name}</strong><br>
+          위도: ${place.lat}<br>
+          경도: ${place.lng}<br>
+          카테고리: ${place.category}<br>
+          설명: ${place.description || "없음"}
+        `;
                 });
-                kakao.maps.event.addListener(marker, 'mouseout', function () {
-                  infoWindow.close();
+
+                kakao.maps.event.addListener(marker, "rightclick", function () {
+                  selectedPlaceForAction = place;
+
+                  const projection = map.getProjection();
+                  if (!projection) return;
+
+                  const point = projection.containerPointFromCoords(pos);
+                  const mapContainer = document.getElementById("map");
+                  const mapRect = mapContainer.getBoundingClientRect();
+
+                  const menu = document.getElementById("contextMenu");
+                  menu.style.left = mapRect.left + point.x + "px";
+                  menu.style.top = mapRect.top + point.y + "px";
+                  menu.style.display = "block";
                 });
+
+                recommendedMarkers.push(marker);
               });
-            });
+
+            } catch (error) {
+              console.error("추천 마커 불러오기 실패:", error);
+            }
+          }
+
+
+          // 맵 클릭 시 메뉴창 숨기기
+          kakao.maps.event.addListener(map, "click", function () {
+            document.getElementById("contextMenu").style.display = "none";
           });
 
-        // 필터 버튼 클릭 시 마커 필터링
-        const buttons = document.querySelectorAll(".buttons button");
-        buttons.forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            const category = this.getAttribute("data-category");
 
-            buttons.forEach(b => b.classList.remove("active"));
-            this.classList.add("active");
+          //일반 마커 생성
+          markerData.forEach(place => {
+            const markerPosition = new kakao.maps.LatLng(place.lat, place.lng);
+            const marker = new kakao.maps.Marker({
+              position: markerPosition,
+              map: map,
+              title: place.name
+            });
 
-            allMarkers.forEach(obj => {
-              if (category === "전체" || obj.category === category) {
-                obj.marker.setMap(map);
-              } else {
-                obj.marker.setMap(null);
+            const infoWindow = new kakao.maps.InfoWindow({
+              content: `<div style="padding:5px;">${place.name}</div>`
+            });
+
+            kakao.maps.event.addListener(marker, 'mouseover', () => infoWindow.open(map, marker));
+            kakao.maps.event.addListener(marker, 'mouseout', () => infoWindow.close());
+            kakao.maps.event.addListener(marker, 'click', function () {
+              document.getElementById("info").innerHTML = `
+    <strong>${place.name}</strong><br>
+    위도: ${place.lat}<br>
+    경도: ${place.lng}<br>
+    카테고리: ${place.category}<br>
+    설명: ${place.description || "없음"}
+  `;
+            });
+
+            kakao.maps.event.addListener(marker, "rightclick", function () {
+              selectedPlaceForAction = place;
+
+              const projection = map.getProjection();
+              if (!projection) return;
+
+              const point = projection.containerPointFromCoords(markerPosition);
+              const mapContainer = document.getElementById("map");
+              const mapRect = mapContainer.getBoundingClientRect();
+
+              const menu = document.getElementById("contextMenu");
+              menu.style.left = mapRect.left + point.x + "px";
+              menu.style.top = mapRect.top + point.y + "px";
+              menu.style.display = "block";
+            });
+
+            allMarkers.push({ marker, category: place.category });
+          });
+
+
+          // 수정 버튼 클릭 시
+          document.getElementById("editPlaceBtn").addEventListener("click", async function () {
+            if (!selectedPlaceForAction) return;
+
+            const newName = prompt("새 음식점 이름:", selectedPlaceForAction.name);
+            const newDesc = prompt("새 설명:", selectedPlaceForAction.description);
+
+            if (!newName || !newDesc) return;
+
+            const token = localStorage.getItem("token");
+            try {
+              const res = await fetch(`http://localhost:3000/places/${selectedPlaceForAction._id}`, {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  name: newName,
+                  lat: selectedPlaceForAction.lat,
+                  lng: selectedPlaceForAction.lng,
+                  category: selectedPlaceForAction.category,
+                  description: newDesc
+                })
+              });
+
+              const updated = await res.json();
+              alert("수정 완료!");
+
+              // 기존 마커 삭제
+              const index = allMarkers.findIndex(obj => obj.marker.getPosition().getLat() === selectedPlaceForAction.lat && obj.marker.getPosition().getLng() === selectedPlaceForAction.lng);
+              if (index !== -1) {
+                allMarkers[index].marker.setMap(null);
+                allMarkers.splice(index, 1); // 목록에서도 제거
               }
+
+              // 새 마커 생성
+              const markerPosition = new kakao.maps.LatLng(selectedPlaceForAction.lat, selectedPlaceForAction.lng);
+              const newMarker = new kakao.maps.Marker({
+                position: markerPosition,
+                map: map,
+                title: newName
+              });
+
+              const infoWindow = new kakao.maps.InfoWindow({
+                content: `<div style="padding:5px;">${newName}</div>`
+              });
+
+              kakao.maps.event.addListener(newMarker, 'mouseover', () => infoWindow.open(map, newMarker));
+              kakao.maps.event.addListener(newMarker, 'mouseout', () => infoWindow.close());
+              kakao.maps.event.addListener(newMarker, 'click', function () {
+                document.getElementById("info").innerHTML = `
+        <strong>${newName}</strong><br>
+        위도: ${selectedPlaceForAction.lat}<br>
+        경도: ${selectedPlaceForAction.lng}<br>
+        카테고리: ${selectedPlaceForAction.category}<br>
+        설명: ${newDesc || "없음"}
+      `;
+              });
+              kakao.maps.event.addListener(newMarker, "rightclick", function () {
+                selectedPlaceForAction = { ...selectedPlaceForAction, name: newName, description: newDesc };
+                const projection = map.getProjection();
+                if (!projection) return;
+                const point = projection.containerPointFromCoords(markerPosition);
+                const mapRect = document.getElementById("map").getBoundingClientRect();
+                const menu = document.getElementById("contextMenu");
+                menu.style.left = mapRect.left + point.x + "px";
+                menu.style.top = mapRect.top + point.y + "px";
+                menu.style.display = "block";
+              });
+
+              // 3️⃣ 새 마커 목록에 추가
+              allMarkers.push({
+                marker: newMarker,
+                category: selectedPlaceForAction.category
+              });
+
+              // 4️⃣ selectedPlaceForAction 갱신
+              selectedPlaceForAction.name = newName;
+              selectedPlaceForAction.description = newDesc;
+
+            } catch (err) {
+              alert("수정 실패");
+              console.error(err);
+            }
+
+            hideContextMenu();
+          });
+
+
+          //  삭제 버튼 클릭 시
+          document.getElementById("deletePlaceBtn").addEventListener("click", function () {
+            if (selectedPlaceForAction) {
+              const token = localStorage.getItem("token");
+              if (confirm("정말 삭제하시겠습니까?")) {
+                fetch(`http://localhost:3000/places/${selectedPlaceForAction._id}`, {
+                  method: "DELETE",
+                  headers: {
+                    "Authorization": `Bearer ${token}`
+                  }
+                })
+                  .then(res => res.json())
+                  .then(data => {
+                    alert("삭제 완료!");
+                    location.reload();
+                  })
+                  .catch(err => {
+                    alert("삭제 실패");
+                    console.error(err);
+                  });
+              }
+            }
+            hideContextMenu();
+          });
+
+          // 지도 클릭 이벤트
+          kakao.maps.event.addListener(map, "click", function (mouseEvent) {
+            hideContextMenu();
+
+            const lat = mouseEvent.latLng.getLat();
+            const lng = mouseEvent.latLng.getLng();
+
+            // 등록된 마커인지 확인
+            const clickedMarkers = allMarkers.filter(obj =>
+              getDistance(lat, lng, obj.marker.getPosition().getLat(), obj.marker.getPosition().getLng()) < 0.00005
+            );
+            if (clickedMarkers.length > 0) return;
+
+            // 위,경도 입력
+            document.getElementById("lat").value = lat;
+            document.getElementById("lng").value = lng;
+
+            //  상호명 자동입력
+            ps.keywordSearch('', function (data, status, pagination) {
+              if (status === kakao.maps.services.Status.OK && data.length > 0) {
+                // 가장 가까운 장소명 사용
+                const nearest = data[0];
+                document.getElementById("name").value = nearest.place_name;
+              } else {
+                // fallback: 주소 이름 사용
+                const geocoder = new kakao.maps.services.Geocoder();
+                geocoder.coord2Address(lng, lat, function (result, status) {
+                  if (status === kakao.maps.services.Status.OK) {
+                    const info = result[0].road_address || result[0].address;
+                    if (info && info.address_name) {
+                      document.getElementById("name").value = info.address_name;
+                    }
+                  }
+                });
+              }
+            }, {
+              location: new kakao.maps.LatLng(lat, lng),
+              radius: 30 // meters, 30~50 정도가 적당
+            });
+
+            // 기존 임시 마커 제거
+            if (tempClickMarker) tempClickMarker.setMap(null);
+
+            tempClickMarker = new kakao.maps.Marker({
+              position: mouseEvent.latLng,
+              map: map,
+              title: "등록 위치"
             });
           });
+
+          //버튼 클릭 필터
+          const buttons = document.querySelectorAll(".buttons button");
+          buttons.forEach(btn => {
+            btn.addEventListener("click", function () {
+              const selectedCategory = this.dataset.category;
+
+              buttons.forEach(b => b.classList.remove("active"));
+              this.classList.add("active");
+
+              allMarkers.forEach(obj => {
+                if (selectedCategory === "전체" || obj.category === selectedCategory) {
+                  obj.marker.setMap(map);
+                } else {
+                  obj.marker.setMap(null);
+                }
+              });
+
+              updateRecommendedMarkers(selectedCategory, userLat, userLng);
+            });
+          });
+
+          updateRecommendedMarkers("전체", userLat, userLng);
+
+        }, function () {
+          alert("위치 접근이 불가합니다.");
         });
       });
-      // ✅ 음식점 등록 처리
-      document.getElementById("placeForm").addEventListener("submit", function (e) {
-        e.preventDefault();
-
-        const newPlace = {
-          name: document.getElementById("name").value,
-          lat: parseFloat(document.getElementById("lat").value),
-          lng: parseFloat(document.getElementById("lng").value),
-          category: document.getElementById("category").value,
-          description: document.getElementById("description").value,
-        };
-
-        fetch("http://localhost:3000/places", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newPlace)
-        })
-          .then(res => {
-            if (!res.ok) throw new Error("등록 실패");
-            alert("등록 완료!");
-            location.reload(); // 페이지 새로고침으로 마커 반영
-          })
-          .catch(err => alert("오류 발생: " + err.message));
-      });
     };
+
+
   </script>
+
+
 </body>
 
 </html>

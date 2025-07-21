@@ -1,55 +1,30 @@
-// server/server.js
-
-const sqlite3 = require("sqlite3").verbose();
-const db = new sqlite3.Database("./places.db");
-
-
 const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const mongoose = require("mongoose"); // ✅ MongoDB
+
 const app = express();
 const port = 3000;
 
-// CORS 허용 (브라우저 보안 문제 방지)
-const cors = require("cors");
 app.use(cors());
-
-const bodyParser = require("body-parser");
 app.use(bodyParser.json());
 
-// POST /places
-app.post("/places", (req, res) => {
-  const { name, lat, lng, category, description } = req.body;
+// ✅ MongoDB 연결
+mongoose.connect("mongodb://localhost:27017/edgecachemap", {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+  .then(() => console.log("✅ Connected to MongoDB"))
+  .catch(err => console.error("❌ MongoDB 연결 실패:", err));
 
-  const sql = `
-    INSERT INTO places (name, lat, lng, category, description)
-    VALUES (?, ?, ?, ?, ?)
-  `;
+// ✅ 회원 기능 및 음식점 등록/조회 라우터
+const authRoutes = require("./routes/auth");
+const placeRoutes = require("./routes/Place");
 
-  db.run(sql, [name, lat, lng, category, description], function (err) {
-    if (err) {
-      console.error(err);
-      return res.status(500).send("DB 저장 실패");
-    }
+app.use("/auth", authRoutes);
+app.use("/places", placeRoutes);
 
-    res.status(201).json({ message: "등록 완료", id: this.lastID });
-  });
-});
-
-
-const fs = require("fs");
-
-// JSON 데이터 반환 API
-
-app.get("/places", (req, res) => {
-  db.all("SELECT * FROM places", (err, rows) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).send("DB 조회 실패");
-    }
-    res.json(rows);
-  });
-});
-
-
+// ✅ 기본 확인
 app.get("/", (req, res) => {
   res.send("🌐 서버가 정상 작동 중입니다!");
 });
