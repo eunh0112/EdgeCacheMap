@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose"); // ✅ MongoDB
+require("dotenv").config();
 
 const app = express();
 const port = 3000;
@@ -9,13 +10,15 @@ const port = 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// ✅ MongoDB 연결
-mongoose.connect("mongodb://host.docker.internal:27017/edgecachemap", {
+const MONGO_URI = process.env.MONGO_URI;
+
+mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
-  useUnifiedTopology: true,
+  useUnifiedTopology: true
 })
-  .then(() => console.log("✅ Connected to MongoDB"))
+  .then(() => console.log("✅ MongoDB Atlas 연결 성공 (server.js에서)"))
   .catch(err => console.error("❌ MongoDB 연결 실패:", err));
+
 
 // ✅ 회원 기능 및 음식점 등록/조회 라우터
 const authRoutes = require("./routes/auth");
