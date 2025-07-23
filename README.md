@@ -18,18 +18,26 @@ Edge-Cloud 기반 사용자 위치 지능형 추천 시스템
 - 지도 위에서 클릭만으로 위치 정보 자동 입력
 ---
 
-## 사용 기술
+## 프론트 스택
 - HTML / CSS / JavaScript
 - Kakao Maps API
 - Geolocation API
 
 ---
 
-## 백엔드 스택 (MSA 초기 구조)
+## 백엔드 스택
 - Node.js + Express
 - MongoDB + Mongoose
 - JWT 기반 인증
 - RESTful API 설계
+
+---
+
+## 배포
+- Docker 
+ - frontend/ 폴더 : 정적 HTML -> NGINX 컨테이너
+ - backend/  폴더 : Express API 서버 -> Node.js 컨테이너
+- k8s 기반 클라우드 배포
 
 ---
 
