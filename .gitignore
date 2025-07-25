@@ -1,0 +1,4 @@
+# mkcert 인증서 무시
+*.pem
+*.key
+mkcert/

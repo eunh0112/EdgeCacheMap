@@ -10,12 +10,12 @@ Edge-Cloud 기반 사용자 위치 지능형 추천 시스템
 ---
 
 ## ✅ 주요 기능
-- 개인 음식 도감: 내가 등록한 음식점만 지도에 표시
-- 지도 기반 맛집 마커 표시
-- 카테고리별 필터 기능
-- 사용자 위치 기반 중심 이동 및 가까운 top 3 음식점 자동 추천
-- 마커 클릭 시 상세 정보 출력
-- 지도 위에서 클릭만으로 위치 정보 자동 입력
+- 사용자의 현재 위치 기반 맛집 지도 표시
+- 나만의 맛집 등록 / 수정 / 삭제
+- 로그인 / 회원가입 기능
+- Kakao Maps 기반 지도 UI
+- HTTPS 보안 접속 (mkcert self-signed 인증서)
+- 로컬 Kubernetes(Minikube) 배포
 ---
 
 ## 프론트 스택
@@ -34,10 +34,11 @@ Edge-Cloud 기반 사용자 위치 지능형 추천 시스템
 ---
 
 ## 배포
-- Docker 
- - frontend/ 폴더 : 정적 HTML -> NGINX 컨테이너
- - backend/  폴더 : Express API 서버 -> Node.js 컨테이너
-- k8s 기반 클라우드 배포
+- Frontend: HTML + JS + Kakao Maps SDK
+- Backend: Node.js + Express
+- Database: MongoDB
+- 배포 환경: Minikube, Ingress-NGINX, mkcert, TLS
+- 도구: kubectl, Chocolatey, mkcert
 
 ---
 

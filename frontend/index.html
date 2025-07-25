@@ -109,7 +109,7 @@
       const category = document.getElementById("category").value;
       const description = document.getElementById("description").value;
 
-      fetch("http://3.91.193.59:3000/places", {
+      fetch("/places", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -132,7 +132,7 @@
       const username = document.getElementById("username").value;
       const password = document.getElementById("password").value;
 
-      fetch("http://3.91.193.59:3000/auth/login", {
+      fetch("/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -167,7 +167,7 @@
       const username = document.getElementById("username").value;
       const password = document.getElementById("password").value;
 
-      fetch("http://3.91.193.59:3000/auth/register", {
+      fetch("/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -201,7 +201,7 @@
       const category = document.getElementById("category").value;
       const description = document.getElementById("description").value;
 
-      fetch(`http://3.91.193.59:3000/places/${selectedPlaceId}`, {
+      fetch(`/places/${selectedPlaceId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -262,7 +262,7 @@
 
         //DB에서 음식점 데이터 불러오기
         const token = localStorage.getItem("token");
-        const res = await fetch("http://3.91.193.59:3000/places/my-places", {
+        const res = await fetch("/places/my-places", {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -292,7 +292,7 @@
               const token = localStorage.getItem("token");
 
               const res = await fetch(
-                `http://3.91.193.59:3000/places/recommend?lat=${userLat}&lng=${userLng}&category=${category}`,
+                `/places/recommend?lat=${userLat}&lng=${userLng}&category=${category}`,
                 {
                   headers: {
                     "Authorization": `Bearer ${token}`
@@ -419,7 +419,7 @@
 
             const token = localStorage.getItem("token");
             try {
-              const res = await fetch("http://3.91.193.59:3000/places/${selectedPlaceForAction._id}", {
+              const res = await fetch("/places/${selectedPlaceForAction._id}", {
                 method: "PUT",
                 headers: {
                   "Content-Type": "application/json",
@@ -503,7 +503,7 @@
             if (selectedPlaceForAction) {
               const token = localStorage.getItem("token");
               if (confirm("정말 삭제하시겠습니까?")) {
-                fetch(`http://3.91.193.59:3000/places/${selectedPlaceForAction._id}`, {
+                fetch(`/places/${selectedPlaceForAction._id}`, {
                   method: "DELETE",
                   headers: {
                     "Authorization": `Bearer ${token}`

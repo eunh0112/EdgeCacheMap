@@ -1,37 +1,44 @@
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const mongoose = require("mongoose"); // ✅ MongoDB
-require("dotenv").config();
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
 
 const app = express();
-const port = 3000;
+
+
+const PORT     = process.env.PORT     || 3000;
+const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) {
+  console.error('❌ MONGO_URI 가 설정되지 않았습니다.');
+  process.exit(1);
+}
+
 
 app.use(cors());
 app.use(bodyParser.json());
 
-const MONGO_URI = process.env.MONGO_URI;
-
+// MongoDB 연결
 mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
-  useUnifiedTopology: true
+  useUnifiedTopology: true,
 })
-  .then(() => console.log("✅ MongoDB Atlas 연결 성공 (server.js에서)"))
-  .catch(err => console.error("❌ MongoDB 연결 실패:", err));
+  .then(() => console.log('✅ MongoDB 연결 성공'))
+  .catch(err => {
+    console.error('❌ MongoDB 연결 실패:', err);
+    process.exit(1);
+  });
+
+// 라우터
+app.use('/auth',  require('./routes/auth'));
+app.use('/places', require('./routes/Place'));
 
 
-// ✅ 회원 기능 및 음식점 등록/조회 라우터
-const authRoutes = require("./routes/auth");
-const placeRoutes = require("./routes/Place");
-
-app.use("/auth", authRoutes);
-app.use("/places", placeRoutes);
-
-// ✅ 기본 확인
-app.get("/", (req, res) => {
-  res.send("🌐 서버가 정상 작동 중입니다!");
+app.get('/', (req, res) => {
+  res.send('🌐 서버가 정상 작동 중입니다!');
 });
 
-app.listen(port, () => {
-  console.log(`🚀 서버가 http://localhost:${port} 에서 실행 중입니다`);
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 서버가 http://0.0.0.0:${PORT} 에서 실행 중입니다`);
 });
